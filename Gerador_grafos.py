@@ -58,11 +58,15 @@ class GraphGUI:
         self.percorrer_arestas = tk.Button(master, text="Percorrer Arestas", command=self.percorrer_arestas)
         self.percorrer_arestas.pack()
 
-        self.prim_button = tk.Button(master, text="Calcular MST (Prim)", command=self.calculate_prim)
+        self.prim_button = tk.Button(master, text="Prim", command=self.calculate_prim)
         self.prim_button.pack()
 
-        self.boruvka_button = tk.Button(master, text="Calcular MST (Borůvka)", command=self.calculate_boruvka)
+        self.boruvka_button = tk.Button(master, text="Borůvka", command=self.calculate_boruvka)
         self.boruvka_button.pack()
+
+        self.Kruskal_button = tk.Button(master, text="Kruskal", command=self.calculate_kruskal)
+        self.Kruskal_button.pack()
+
 
         self.draw_graph()
 
@@ -166,12 +170,10 @@ class GraphGUI:
         edges = list(self.graph.edges(data=True))
         pos = nx.planar_layout(self.graph)
         
-        # Start with an arbitrary node (assuming the graph is not empty)
         start_node = next(iter(self.graph.nodes))
         visited.add(start_node)
         
         while len(visited) < len(self.graph.nodes):
-            # Find minimum weight edge connecting visited and unvisited nodes
             edge = min((e for e in edges if (e[0] in visited and e[1] not in visited) or 
                                         (e[1] in visited and e[0] not in visited)),
                     key=lambda x: x[2]['weight'])
@@ -184,7 +186,6 @@ class GraphGUI:
                 mst.add_edge(edge[1], edge[0], weight=edge[2]['weight'])
                 visited.add(edge[0])
             
-            # Update visualization
             self.ax.clear()
             node_colors = ['red' if n in visited else 'skyblue' for n in self.graph.nodes]
             edge_colors = ['red' if (u, v) in mst.edges or (v, u) in mst.edges else 'black' for u, v in self.graph.edges]
@@ -199,38 +200,118 @@ class GraphGUI:
         nx.draw_networkx_edge_labels(mst, pos, edge_labels=nx.get_edge_attributes(mst, 'weight'))
         self.canvas_ntk.draw()
 
-
     def calculate_boruvka(self):
-        def boruvka_step(graph):
-            components = list(nx.connected_components(graph))
-            cheapest_edges = {}
-            for component in components:
-                min_edge = None
-                for node in component:
-                    for neighbor, data in graph[node].items():
-                        if neighbor not in component:
-                            if min_edge is None or data['weight'] < graph[min_edge[0]][min_edge[1]]['weight']:
-                                min_edge = (node, neighbor)
-                if min_edge:
-                    cheapest_edges[component] = min_edge
-            return [(u, v, graph[u][v]['weight']) for u, v in cheapest_edges.values()]
+        def find_component(node, parent):
+            if parent[node] == node:
+                return node
+            else:
+                parent[node] = find_component(parent[node], parent)
+                return parent[node]
 
+        def union_components(u, v, parent, rank):
+            root_u = find_component(u, parent)
+            root_v = find_component(v, parent)
+            if root_u != root_v:
+                if rank[root_u] > rank[root_v]:
+                    parent[root_v] = root_u
+                elif rank[root_u] < rank[root_v]:
+                    parent[root_u] = root_v
+                else:
+                    parent[root_v] = root_u
+                    rank[root_u] += 1
+
+        if not self.graph.edges:
+            print("Grafo vazio.")
+            return
+
+        parent = {node: node for node in self.graph.nodes()}
+        rank = {node: 0 for node in self.graph.nodes()}
         mst = nx.Graph()
         mst.add_nodes_from(self.graph.nodes(data=True))
         pos = nx.planar_layout(self.graph)
 
-        while len(mst.edges) < len(self.graph.nodes) - 1:
-            new_edges = boruvka_step(self.graph)
-            mst.add_weighted_edges_from(new_edges)
-            
-            for u, v, data in new_edges:
-                self.graph.remove_edge(u, v)
-                
-                # Atualizando a visualização
+        num_components = len(self.graph.nodes)
+        while num_components > 1:
+            cheapest_edges = {}
+            for u, v, data in self.graph.edges(data=True):
+                component_u = find_component(u, parent)
+                component_v = find_component(v, parent)
+                if component_u != component_v:
+                    if component_u not in cheapest_edges or cheapest_edges[component_u][2]['weight'] > data['weight']:
+                        cheapest_edges[component_u] = (u, v, data)
+                    if component_v not in cheapest_edges or cheapest_edges[component_v][2]['weight'] > data['weight']:
+                        cheapest_edges[component_v] = (u, v, data)
+
+            for u, v, data in cheapest_edges.values():
+                component_u = find_component(u, parent)
+                component_v = find_component(v, parent)
+                if component_u != component_v:
+                    mst.add_edge(u, v, weight=data['weight'])
+                    union_components(u, v, parent, rank)
+                    num_components -= 1
+
+            self.ax.clear()
+            components = list(nx.connected_components(mst))
+            colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow']
+            color_map = {}
+            for idx, component in enumerate(components):
+                for node in component:
+                    color_map[node] = colors[idx % len(colors)]
+            node_colors = [color_map[node] for node in mst.nodes()]
+            edge_colors = ['red' if (u, v) in mst.edges or (v, u) in mst.edges else 'black' for u, v in self.graph.edges]
+            nx.draw(self.graph, pos, ax=self.ax, with_labels=True, node_size=500, node_color=node_colors, edge_color=edge_colors)
+            nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=nx.get_edge_attributes(self.graph, 'weight'))
+            self.canvas_ntk.draw()
+            self.master.update_idletasks()
+            time.sleep(5)
+
+        self.ax.clear()
+        components = list(nx.connected_components(mst))
+        color_map = {}
+        for idx, component in enumerate(components):
+            for node in component:
+                color_map[node] = colors[idx % len(colors)]
+        node_colors = [color_map[node] for node in mst.nodes()]
+        nx.draw(mst, pos, ax=self.ax, with_labels=True, node_size=500, node_color=node_colors)
+        nx.draw_networkx_edge_labels(mst, pos, edge_labels=nx.get_edge_attributes(mst, 'weight'))
+        self.canvas_ntk.draw()
+    
+    def calculate_kruskal(self):
+        if not self.graph.edges:
+            print("Grafo vazio.")
+            return
+
+        parent = {node: node for node in self.graph.nodes()}
+        rank = {node: 0 for node in self.graph.nodes()}
+
+        def find(node):
+            if parent[node] != node:
+                parent[node] = find(parent[node])
+            return parent[node]
+
+        def union(node1, node2):
+            root1 = find(node1)
+            root2 = find(node2)
+            if root1 != root2:
+                if rank[root1] > rank[root2]:
+                    parent[root2] = root1
+                elif rank[root1] < rank[root2]:
+                    parent[root1] = root2
+                else:
+                    parent[root2] = root1
+                    rank[root1] += 1
+
+        edges = sorted(self.graph.edges(data=True), key=lambda x: x[2]['weight'])
+        mst = nx.Graph()
+        pos = nx.planar_layout(self.graph)
+
+        for u, v, data in edges:
+            if find(u) != find(v):
+                union(u, v)
+                mst.add_edge(u, v, weight=data['weight'])
                 self.ax.clear()
-                node_colors = ['red' if n in mst.nodes else 'skyblue' for n in self.graph.nodes]
-                edge_colors = ['red' if (u, v) in mst.edges or (v, u) in mst.edges else 'black' for u, v in self.graph.edges]
-                nx.draw(self.graph, pos, ax=self.ax, with_labels=True, node_size=500, node_color=node_colors, edge_color=edge_colors)
+                nx.draw(self.graph, pos, ax=self.ax, with_labels=True, node_size=500, node_color='skyblue', edge_color='black')
+                nx.draw(mst, pos, ax=self.ax, with_labels=True, node_size=500, node_color='skyblue', edge_color='red')
                 nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=nx.get_edge_attributes(self.graph, 'weight'))
                 self.canvas_ntk.draw()
                 self.master.update_idletasks()
