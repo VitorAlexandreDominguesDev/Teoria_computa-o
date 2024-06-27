@@ -156,34 +156,49 @@ class GraphGUI:
         self.canvas_ntk.draw()
 
     def calculate_prim(self):
+        if not self.graph.nodes:
+            print("Grafo vazio.")
+            return
+        
         mst = nx.Graph()
         mst.add_nodes_from(self.graph.nodes(data=True))
         visited = set()
         edges = list(self.graph.edges(data=True))
         pos = nx.planar_layout(self.graph)
         
+        # Start with an arbitrary node (assuming the graph is not empty)
+        start_node = next(iter(self.graph.nodes))
+        visited.add(start_node)
+        
         while len(visited) < len(self.graph.nodes):
-            edge = min((e for e in edges if e[0] in visited or not visited), key=lambda x: x[2]['weight'])
+            # Find minimum weight edge connecting visited and unvisited nodes
+            edge = min((e for e in edges if (e[0] in visited and e[1] not in visited) or 
+                                        (e[1] in visited and e[0] not in visited)),
+                    key=lambda x: x[2]['weight'])
+            
             edges.remove(edge)
-            if edge[0] not in visited or edge[1] not in visited:
+            if edge[0] in visited:
                 mst.add_edge(edge[0], edge[1], weight=edge[2]['weight'])
-                visited.add(edge[0])
                 visited.add(edge[1])
-                
-                # Atualizando a visualização
-                self.ax.clear()
-                node_colors = ['red' if n in visited else 'skyblue' for n in self.graph.nodes]
-                edge_colors = ['red' if (u, v) in mst.edges or (v, u) in mst.edges else 'black' for u, v in self.graph.edges]
-                nx.draw(self.graph, pos, ax=self.ax, with_labels=True, node_size=500, node_color=node_colors, edge_color=edge_colors)
-                nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=nx.get_edge_attributes(self.graph, 'weight'))
-                self.canvas_ntk.draw()
-                self.master.update_idletasks()
-                time.sleep(1)
+            else:
+                mst.add_edge(edge[1], edge[0], weight=edge[2]['weight'])
+                visited.add(edge[0])
+            
+            # Update visualization
+            self.ax.clear()
+            node_colors = ['red' if n in visited else 'skyblue' for n in self.graph.nodes]
+            edge_colors = ['red' if (u, v) in mst.edges or (v, u) in mst.edges else 'black' for u, v in self.graph.edges]
+            nx.draw(self.graph, pos, ax=self.ax, with_labels=True, node_size=500, node_color=node_colors, edge_color=edge_colors)
+            nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=nx.get_edge_attributes(self.graph, 'weight'))
+            self.canvas_ntk.draw()
+            self.master.update_idletasks()
+            time.sleep(1)
         
         self.ax.clear()
         nx.draw(mst, pos, ax=self.ax, with_labels=True, node_size=500, node_color='lightgreen')
         nx.draw_networkx_edge_labels(mst, pos, edge_labels=nx.get_edge_attributes(mst, 'weight'))
         self.canvas_ntk.draw()
+
 
     def calculate_boruvka(self):
         def boruvka_step(graph):
