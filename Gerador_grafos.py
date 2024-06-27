@@ -5,71 +5,87 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
 from tkinter import filedialog
 import time
-
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 class GraphGUI:
     def __init__(self, master):
         self.master = master
-        self.master.title("Graph Editor")
-
+        self.master.title("Editor de Grafos")
+        s=ttk.Style()
+        s.theme_use('superhero')
         self.graph = nx.Graph()
+
+        ## Configuração da grade principal
+        self.master.grid_rowconfigure(0, weight=1)
+        self.master.grid_columnconfigure(1, weight=1)
+
+        # Frame para o gráfico
+        self.frame_grafico = tk.Frame(master)
+        self.frame_grafico.grid(row=0, column=1, sticky='nsew')
 
         self.figure = plt.figure()
         self.ax = self.figure.add_subplot(111)
-        self.canvas_ntk = FigureCanvasTkAgg(self.figure, master=self.master)
-        self.canvas_ntk.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.canvas_ntk = FigureCanvasTkAgg(self.figure, master=self.frame_grafico)
+        self.canvas_ntk.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        self.add_label = tk.Label(master, text="Vértice:")
-        self.add_label.pack()
-        self.add_entry = tk.Entry(master)
-        self.add_entry.pack()
-        self.add_button = tk.Button(master, text="Adicionar Vértice", command=self.add_vertex)
-        self.add_button.pack()
+        # Frame para os botões
+        self.frame_botoes = tk.Frame(master)
+        self.frame_botoes.grid(row=0, column=0, sticky='ew')
 
-        self.remove_label = tk.Label(master, text="Vértice a Remover:")
-        self.remove_label.pack()
-        self.remove_entry = tk.Entry(master)
-        self.remove_entry.pack()
-        self.remove_button = tk.Button(master, text="Remover Vértice", command=self.remove_vertex)
-        self.remove_button.pack()
+        # Labels e Entradas para Adicionar Vértice
+        self.add_label = ttk.Label(self.frame_botoes, text="Vértice:")
+        self.add_label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        self.add_entry = ttk.Entry(self.frame_botoes, bootstyle=PRIMARY)
+        self.add_entry.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        self.add_button = ttk.Button(self.frame_botoes, text="Adicionar Vértice", bootstyle=PRIMARY, command=self.add_vertex)
+        self.add_button.grid(row=0, column=2, padx=5, pady=5, sticky='ew')
 
-        self.edge_label = tk.Label(master, text="Aresta (Origem-Destino):")
-        self.edge_label.pack()
-        self.edge_origin_entry = tk.Entry(master)
-        self.edge_origin_entry.pack()
-        self.edge_dest_entry = tk.Entry(master)
-        self.edge_dest_entry.pack()
-        self.edge_weight_label = tk.Label(master, text="Peso:")
-        self.edge_weight_label.pack()
-        self.edge_weight_entry = tk.Entry(master)
-        self.edge_weight_entry.pack()
-        self.edge_button = tk.Button(master, text="Adicionar Aresta", command=self.add_edge)
-        self.edge_button.pack()
+        # Labels e Entradas para Remover Vértice
+        self.remove_label = ttk.Label(self.frame_botoes, text="Vértice a Remover:")
+        self.remove_label.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        self.remove_entry = ttk.Entry(self.frame_botoes, bootstyle=PRIMARY)
+        self.remove_entry.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
+        self.remove_button = ttk.Button(self.frame_botoes, text="Remover Vértice", bootstyle=PRIMARY, command=self.remove_vertex)
+        self.remove_button.grid(row=1, column=2, padx=5, pady=5, sticky='ew')
 
-        self.load_button = tk.Button(master, text="Carregar Grafo", command=self.load_graph)
-        self.load_button.pack()
+        # Labels e Entradas para Adicionar Aresta
+        self.edge_label = ttk.Label(self.frame_botoes, text="Aresta (Origem-Destino):")
+        self.edge_label.grid(row=2, column=0, padx=5, pady=5, sticky='w')
+        self.edge_origin_entry = ttk.Entry(self.frame_botoes, bootstyle=PRIMARY)
+        self.edge_origin_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
+        self.edge_dest_entry = ttk.Entry(self.frame_botoes, bootstyle=PRIMARY)
+        self.edge_dest_entry.grid(row=3, column=1, padx=5, pady=5, sticky='ew')
+        self.edge_weight_label = ttk.Label(self.frame_botoes, text="Peso:")
+        self.edge_weight_label.grid(row=4, column=0, padx=5, pady=5, sticky='w')
+        self.edge_weight_entry = ttk.Entry(self.frame_botoes, bootstyle=PRIMARY)
+        self.edge_weight_entry.grid(row=4, column=1, padx=5, pady=5, sticky='ew')
+        self.edge_button = ttk.Button(self.frame_botoes, text="Adicionar Aresta", bootstyle=PRIMARY, command=self.add_edge)
+        self.edge_button.grid(row=2, column=2, rowspan=3, padx=5, pady=5, sticky='ew')
 
-        self.save_button = tk.Button(master, text="Salvar Grafo", command=self.save_graph)
-        self.save_button.pack()
+        # Botões para carregar e salvar grafo
+        self.load_button = ttk.Button(self.frame_botoes, text="Carregar Grafo", bootstyle=PRIMARY, command=self.load_graph)
+        self.load_button.grid(row=5, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
+        self.save_button = ttk.Button(self.frame_botoes, text="Salvar Grafo", bootstyle=PRIMARY, command=self.save_graph)
+        self.save_button.grid(row=6, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
 
-        self.percorrer_vertices = tk.Button(master, text="Percorrer Vértices", command=self.percorrer_vertices)
-        self.percorrer_vertices.pack()
+        # Botões para percorrer vértices e arestas
+        self.percorrer_vertices = ttk.Button(self.frame_botoes, text="Percorrer Vértices", bootstyle=PRIMARY, command=self.percorrer_vertices)
+        self.percorrer_vertices.grid(row=7, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
+        self.percorrer_arestas = ttk.Button(self.frame_botoes, text="Percorrer Arestas", bootstyle=PRIMARY, command=self.percorrer_arestas)
+        self.percorrer_arestas.grid(row=8, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
 
-        self.percorrer_arestas = tk.Button(master, text="Percorrer Arestas", command=self.percorrer_arestas)
-        self.percorrer_arestas.pack()
-
-        self.prim_button = tk.Button(master, text="Prim", command=self.calculate_prim)
-        self.prim_button.pack()
-
-        self.boruvka_button = tk.Button(master, text="Borůvka", command=self.calculate_boruvka)
-        self.boruvka_button.pack()
-
-        self.Kruskal_button = tk.Button(master, text="Kruskal", command=self.calculate_kruskal)
-        self.Kruskal_button.pack()
-
-
+        # Botões para algoritmos Prim e Borůvka
+        self.prim_button = ttk.Button(self.frame_botoes, text="Prim", bootstyle=PRIMARY, command=self.calculate_prim)
+        self.prim_button.grid(row=9, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
+        self.boruvka_button = ttk.Button(self.frame_botoes, text="Borůvka", bootstyle=PRIMARY, command=self.calculate_boruvka)
+        self.boruvka_button.grid(row=10, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
+        self.Kruskal_button = ttk.Button(self.frame_botoes, text="Kruskal", bootstyle=PRIMARY, command=self.calculate_kruskal)
+        self.Kruskal_button.grid(row=11, column=0, columnspan=3, padx=5, pady=5, sticky='ew')
         self.draw_graph()
-
+        
+        self.master.grid_rowconfigure(0, weight=1)
+        self.master.grid_columnconfigure(1, weight=1)
     def add_vertex(self):
         vertex = self.add_entry.get()
         if vertex:
@@ -122,10 +138,8 @@ class GraphGUI:
         self.canvas_ntk.draw()
 
     def percorrer_vertices(self):
-        print("Percorrer Vértices")
         percorridos = []
         for vertice in self.graph.nodes():
-            print(f"Percorrendo vértice: {vertice}")
             self.ax.clear()
             cor = ["red" if node in percorridos else 'skyblue' for node in list(self.graph.nodes())]
             cor[list(self.graph.nodes()).index(vertice)] = 'red'
@@ -141,10 +155,8 @@ class GraphGUI:
         self.canvas_ntk.draw()
 
     def percorrer_arestas(self):
-        print("Percorrer Arestas")
         percorridos = []
         for edge in self.graph.edges(data=True):
-            print(f"Percorrendo aresta: {edge[0]} - {edge[1]}")
             self.ax.clear()
             edge_colors = ['red' if (u, v) in percorridos or (v, u) in percorridos else 'black' for u, v in self.graph.edges()]
             edge_colors[list(self.graph.edges()).index((edge[0], edge[1]))] = 'red'
@@ -263,7 +275,7 @@ class GraphGUI:
             nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=nx.get_edge_attributes(self.graph, 'weight'))
             self.canvas_ntk.draw()
             self.master.update_idletasks()
-            time.sleep(5)
+            time.sleep(2)
 
         self.ax.clear()
         components = list(nx.connected_components(mst))
